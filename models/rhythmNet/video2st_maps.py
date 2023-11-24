@@ -432,6 +432,7 @@ if __name__ == '__main__':
     video_files = [r'D:\anshul\remoteHR\mahnob\Sessions\102\P1-Rec4-2009.07.09.18.57.48_C1 trigger _C_Section_2.avi']
     # glob.glob(config.FACE_DATA_DIR + '/**/*avi')
 
+
     stacked_maps = preprocess_video_to_st_maps(video_path=video_files[0], output_shape=(180, 180), clip_size=300)
     print(stacked_maps)
     print(len(stacked_maps))
