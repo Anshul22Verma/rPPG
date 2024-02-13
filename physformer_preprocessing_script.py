@@ -10,13 +10,7 @@ import csv
 import pandas as pd
 
 
-# In[ ]:
 
-
-
-
-
-# In[12]:
 
 
 # Function to extract frames from video and save them as images
@@ -40,7 +34,6 @@ def extract_frames(video_path, output_dir, start_frame):
     return frame_rate, total_frames
 
 
-# In[13]:
 
 
 # Function to calculate average heart rate from gt_HR.csv file
@@ -50,7 +43,6 @@ def calculate_avg_heart_rate(gt_hr_path):
     return avg_hr
 
 
-# In[14]:
 
 
 # Main function
@@ -107,7 +99,6 @@ def process_directory(root_dir):
         #writer.writerow({'TotalFrames': total_frames})
 
 
-# In[15]:
 
 
 # Example usage
@@ -115,7 +106,6 @@ root_directory = 'C:/Users/16475/PhysFormer-main/PhysFormer-main/vipl_hr_partial
 process_directory(root_directory)
 
 
-# In[ ]:
 
 
 
