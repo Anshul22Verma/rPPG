@@ -12,7 +12,7 @@ from torchvideotransforms import video_transforms, volume_transforms
 import sys
 
 sys.path.append(r"C:\Users\transponster\Documents\anshul\rPPG")
-from utils.helper import read_xml, age, load_sample, get_transforms
+from utils.helper import read_xml, age, load_sample, get_transforms, load_stl_map_sample
 
 random_state = 2023
 random.seed(random_state)
@@ -85,19 +85,25 @@ def prep_splits(root_loc: str):  # -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
 
 
 class MANHOBHRDatasetDBClassification(Dataset):
-    def __init__(self, df: pd.DataFrame, train: bool, encodings: dict):
+    def __init__(self, df: pd.DataFrame, train: bool, encodings: dict, stl_map: dict = {}):
         super(MANHOBHRDatasetDBClassification, self).__init__()
         self.df = df
         self.transforms = get_transforms(train=train)
         self.is_train = train
         self.encodings = encodings
         self.dataset = "MANHOB"
+        self.stl_map = stl_map
 
     def __getitem__(self, index):
         row_ = self.df.iloc[index]
         clip_path = row_["AVI File"]
 
-        clip_ = load_sample(f_path=clip_path)
+        if self.stl_map and "th" in self.stl_map and "group_clip_size" in self.stl_map and "frames_dim" in self.stl_map:
+            clip_ = load_stl_map_sample(f_path=clip_path, th=self.stl_map["th"],
+                                        group_clip_size=self.stl_map["group_clip_size"],
+                                        frames_dim=self.stl_map["frames_dim"])
+        else:
+            clip_ = load_sample(f_path=clip_path)
 
         # transform clips
         tensor_clip = self.transforms(clip_)
@@ -117,14 +123,25 @@ def get_data_loaders(train_df: pd.DataFrame, test_df: pd.DataFrame, encodings: d
     return train_loader, test_loader
 
 
+def get_stl_data_loaders(train_df: pd.DataFrame, test_df: pd.DataFrame, encodings: dict, stl_map: dict):
+    train_dataset = MANHOBHRDatasetDBClassification(df=train_df, train=True, encodings=encodings, stl_map=stl_map)
+    test_dataset = MANHOBHRDatasetDBClassification(df=test_df, train=True, encodings=encodings, stl_map=stl_map)
+
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+    return train_loader, test_loader
+
+
 if __name__ == "__main__":
     df_fold_1, df_fold_2 = prep_splits(root_loc=r"D:\anshul\remoteHR\mahnob")
 
-    avi_file = df_fold_1["AVI File"].values.tolist()[0]
-    vid = load_sample(avi_file)
+    avi_file = df_fold_1["AVI File"].values.tolist()[1]
+    vid = load_sample(avi_file, th=1)
 
     # 300 X (780 X 580 X 3) --> frames X H X W X C
     # 300 X (224 X 224 X 3) --> frames X H X W X C
 
-    print(vid)
+    # print(vid)
+    print(avi_file)
     print(len(vid))
+    # 1037 frames -  17 -> seconds => 61 fps

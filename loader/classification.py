@@ -10,7 +10,7 @@ from torchvideotransforms import video_transforms, volume_transforms
 import sys
 
 sys.path.append(r"C:\Users\transponster\Documents\anshul\rPPG")
-from utils.helper import read_hdf5, load_sample, get_transforms
+from utils.helper import read_hdf5, load_sample, get_transforms, load_stl_map_sample
 from loader.vipl import prep_splits_V1, prep_splits_V2
 from loader.manhob import prep_splits as prep_splits_manhob
 from loader.cohface import prep_splits as prep_splits_cohface
@@ -80,19 +80,35 @@ def prep_split(root_loc):
 
 
 class DatasetDBClassification(Dataset):
-    def __init__(self, df: pd.DataFrame, train: bool, encodings: dict):
+    def __init__(self, df: pd.DataFrame, train: bool, encodings: dict, stl_map: dict = {}, fps: dict = None):
         super(DatasetDBClassification, self).__init__()
         self.df = df
         self.transforms = get_transforms(train=train)
         self.is_train = train
         self.encodings = encodings
+        self.stl_map = stl_map
+        self.fps = fps
 
     def __getitem__(self, index):
         row_ = self.df.iloc[index]
         clip_path = row_["AVI File"]
         dataset = row_["Dataset"]
 
-        clip_ = load_sample(f_path=clip_path, th=10)
+        if self.stl_map and "th" in self.stl_map and "group_clip_size" in self.stl_map and "frames_dim" in self.stl_map:
+            if self.fps:
+                clip_ = load_stl_map_sample(f_path=clip_path, th=self.stl_map["th"],
+                                            group_clip_size=self.stl_map["group_clip_size"],
+                                            frames_dim=self.stl_map["frames_dim"], from_fps=self.fps[dataset],
+                                            to_fps=self.fps["combined"])
+            else:
+                clip_ = load_stl_map_sample(f_path=clip_path, th=self.stl_map["th"],
+                                            group_clip_size=self.stl_map["group_clip_size"],
+                                            frames_dim=self.stl_map["frames_dim"])
+        else:
+            if self.fps:
+                clip_ = load_sample(f_path=clip_path, th=10, from_fps=self.fps[dataset], to_fps=self.fps["combined"])
+            else:
+                clip_ = load_sample(f_path=clip_path, th=10)
 
         # transform clips
         tensor_clip = self.transforms(clip_)
@@ -103,12 +119,21 @@ class DatasetDBClassification(Dataset):
         return len(self.df)
 
 
-def get_data_loaders(train_df: pd.DataFrame, test_df: pd.DataFrame, encodings: dict):
+def get_data_loaders(train_df: pd.DataFrame, test_df: pd.DataFrame, encodings: dict, fps: dict = None):
     train_dataset = DatasetDBClassification(df=train_df, train=True, encodings=encodings)
     test_dataset = DatasetDBClassification(df=test_df, train=False, encodings=encodings)
 
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False)
+    return train_loader, test_loader
+
+
+def get_stl_data_loaders(train_df: pd.DataFrame, test_df: pd.DataFrame, encodings: dict, stl_map: dict, fps: dict = None):
+    train_dataset = DatasetDBClassification(df=train_df, train=True, encodings=encodings, stl_map=stl_map)
+    test_dataset = DatasetDBClassification(df=test_df, train=False, encodings=encodings, stl_map=stl_map)
+
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     return train_loader, test_loader
 
 
@@ -120,6 +145,13 @@ if __name__ == "__main__":
         "VIPL-V1": 1,
         "VIPL-V2": 2,
         "MANHOB": 3,
+    }
+    fps = {
+        "COHFACE": 20,
+        "VIPL-V1": 25,
+        "VIPL-V2": 26,
+        "MANHOB": 61,
+        "combined": 20,
     }
 
     train_loader, test_loader = get_data_loaders(train_df=df_fold_1, test_df=df_fold_2, encodings=encodings)

@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 sys.path.append(r"C:\Users\transponster\Documents\anshul\rPPG")
-from loader.classification import prep_split, get_data_loaders
+from loader.classification import prep_split, get_data_loaders, get_stl_data_loaders
 from models.classification.t3D_CNN import C3DInspired, ResNet3D
 from utils.test import save_cm, test_model
 
@@ -43,7 +43,7 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: DataLoader,
 
 
 def train(model: torch.nn.Module, root_loc: str, n_epochs: int = 100, board_loc: str = "C3D", fold: int = 1,
-          model_name: str = "C3D.pth", lr: float = None, class_encodings: dict = {}):
+          model_name: str = "C3D.pth", lr: float = None, class_encodings: dict = {}, stl_map: dict = {}):
 
     os.makedirs(os.path.join(os.path.dirname(root_loc), "runs"), exist_ok=True)
     writer = SummaryWriter(os.path.join(os.path.dirname(root_loc), "runs", board_loc))
@@ -61,15 +61,14 @@ def train(model: torch.nn.Module, root_loc: str, n_epochs: int = 100, board_loc:
     for d in ds:
         d_df = train_df[train_df["Dataset"] == d]
         if len(d_df) > 150:
-            train_c.append(d_df[150:])
+            train_c.append(d_df[:150])
         else:
-            pass
             train_c.append(d_df)
     train_df = pd.concat(train_c)
     print(f"Number of training samples: {len(train_df)}")
 
-    train_loader, test_loader = get_data_loaders(train_df=train_df, test_df=test_df,
-                                                 encodings=class_encodings)
+    train_loader, test_loader = get_stl_data_loaders(train_df=train_df, test_df=test_df,
+                                                     encodings=class_encodings, stl_map=stl_map)
     classes = list(class_encodings.values())
     classes.sort()  # encoded - classes are in sorted order
 
@@ -127,14 +126,19 @@ if __name__ == "__main__":
         "MANHOB": 3,
     }
     n_classes = len(class_encodings.keys())
-    board_loc = "C3DInspired"
-    model_name = "C3D_Inspired.pth"
+    board_loc = "C3DInspired_STL"
+    model_name = "C3D_Inspired_STL.pth"
     oversample = False
     model = C3DInspired(n_classes=n_classes)  # ResNet3D(depth=18, num_classes=4)
-    FOLD = 1
-
+    FOLD = 1  # 2
+    #
+    # stl_map = {
+    #     "th": 300,
+    #     "group_clip_size": 15,
+    #     "frames_dim": (224, 224)
+    # }
     # train(model=model, root_loc=root_loc, n_epochs=10, board_loc=board_loc, fold=FOLD,
-    #       model_name=model_name, lr=1e-2, class_encodings=class_encodings)
+    #       model_name=model_name, lr=1e-2, class_encodings=class_encodings, stl_map=stl_map)
 
     model.load_state_dict(torch.load(os.path.join(os.path.dirname(root_loc), "runs", board_loc, model_name)))
 
@@ -143,8 +147,8 @@ if __name__ == "__main__":
     else:
         test_df, train_df = prep_split(root_loc=root_loc)
 
-    test_loader, _ = get_data_loaders(train_df=train_df, test_df=test_df,
-                                      encodings=class_encodings)
+    _, test_loader = get_stl_data_loaders(train_df=train_df, test_df=test_df,
+                                          encodings=class_encodings, stl_map=stl_map)
     classes = list(class_encodings.values())
     classes.sort()  # encoded - classes are in sorted order
 
