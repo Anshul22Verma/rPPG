@@ -5,10 +5,12 @@ import os
 log_file = "rPPG.log"
 log_level = logging.DEBUG
 
+# -----------NOT NEEDED----------------
+# creating log file on root-level
 # Ensure the log directory exists
-log_dir = os.path.dirname(log_file)
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
+# log_dir = os.path.dirname(log_file)
+# if not os.path.exists(log_dir):
+#     os.makedirs(log_dir)
 
 # Create the root logger
 logger = logging.getLogger()

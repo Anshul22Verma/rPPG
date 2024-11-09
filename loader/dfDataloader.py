@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from loader.utils import read_and_preprocess_video, read_gt, extra_info
+from loader.utils import read_video, preprocess_data, read_gt, extra_info
 import logger
 import logging
 
@@ -11,8 +11,8 @@ logrPPG = logging.getLogger(__name__)
 
 
 class rPPGDataloader:
-    def __init__(self, name: str, df_loc: str, split_by: str = None, train_split: str = None, 
-                 condition: str = None):
+    def __init__(self, name_: str, df_loc: str, split_by: str = None, train_split: str = None, 
+                 condition: str = None, pp_config: dict = None):
         """
             A class to create rPPG dataset for training on different rPPG datasets
             arguments:
@@ -22,11 +22,12 @@ class rPPGDataloader:
                 train_split: value of the split-by column to be used for creating train-split
                 condition: condition for training split (allowed conditions, "==", "<", "<=", ">", ">=", and "!=")
         """
-        self.name = name
+        self.ds_name = name_
         self.df_loc = df_loc
         self.split_by = split_by
         self.train_split = train_split
         self.condition = condition
+        self.pp_config = pp_config
 
         self.df = pd.read_csv(self.df_loc)
         allowed_conditions = ["==", ">", "<", ">=", "<=", "!="]
@@ -78,12 +79,15 @@ class rPPGDataloader:
         else:
             train_df, val_df = self.train_df, None
             test_df = self.test_df
-        train_dataset = DFDataset(df=train_df)
+        train_dataset = DFDataset(split="train", dataset=self.ds_name, 
+                                  df=train_df, pp_config=self.pp_config)
         if val_df:
-            val_dataset = DFDataset(df=val_df)
+            val_dataset = DFDataset(split="validation", dataset=self.ds_name, 
+                                    df=val_df, pp_config=self.pp_config)
         else:
             val_dataset = None
-        test_dataset = DFDataset(df=test_df)
+        test_dataset = DFDataset(split="test", dataset=self.ds_name,
+                                 df=test_df, pp_config=self.pp_config)
         return train_dataset, val_dataset, test_dataset
 
 
@@ -107,8 +111,9 @@ class DFDataset(Dataset):
         row_ = self.df.iloc[index]
         clip_path, gt_path = row_["vid"], row_["gt"]
         
-        vid = read_and_preprocess_video(clip_path, self.dataset, self.pp_config)
-        gt, additional_info = read_gt(gt_path, self.dataset), extra_info(clip_path, gt_path, self.dataset)
+        additional_info = extra_info(clip_path, gt_path, self.dataset)
+        vid, gt = preprocess_data(clip_path, gt_path,self.dataset, self.pp_config)
+
         return {
             "video": vid,
             "PPG": gt,
