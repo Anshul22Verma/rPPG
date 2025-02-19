@@ -76,7 +76,7 @@ def train(model, n_epochs, train_loader, val_loader, device,
         torch.cuda.empty_cache()
         
     print("best trained epoch: {}, min_val_loss: {}".format(best_epoch, min_valid_loss))
-    return mean_training_losses, mean_valid_losses, lrs
+    return model, mean_training_losses, mean_valid_losses, lrs, best_epoch
 
 
 def valid(model, val_loader, device, criterion, base_len):
@@ -152,6 +152,14 @@ def save_model(model, model_dir, model_file_name, index):
     model_path = os.path.join(model_dir, model_file_name + '_Epoch' + str(index) + '.pth')
     torch.save(model.state_dict(), model_path)
     print('Saved Model Path: ', model_path)
+
+def load_model(model, model_dir, model_file_name):
+    model_path = os.path.join(model_dir, model_file_name)
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file {model_path} does not exist !!")
+    model.load_state_dict(torch.load(model_path))
+    print('Loaded Model Path: ', model_path)
+    return model
 
 
 def seed_worker(worker_id):
@@ -229,9 +237,9 @@ if __name__ == "__main__":
     scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr, epochs=max_epochs, 
                                                     steps_per_epoch=num_train_batches)
     
-    mean_training_losses, mean_valid_losses, lrs = train(model, max_epochs, train_loader, 
-                                                         val_loader, device, base_len, optimizer, 
-                                                         criterion, scheduler, model_dir, model_file_name)
+    # model, mean_training_losses, mean_valid_losses, lrs, be = train(model, max_epochs, train_loader, 
+    #                                                             val_loader, device, base_len, optimizer, 
+    #                                                             criterion, scheduler, model_dir, model_file_name)
     
     # TESTING
     test(model, test_loader, device, base_len, model_dir, fs)

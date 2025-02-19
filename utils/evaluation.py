@@ -206,7 +206,6 @@ def calculate_metrics(predictions, labels, fs, result_dir):
 
     predictions = [prediction.squeeze().tolist() for prediction in predictions]
     labels = [label.tolist() for label in labels]
-    print(len(predictions))
 
     for index in tqdm(range(len(predictions)), ncols=80):
         prediction = predictions[index]  # shape of the chunk
@@ -292,8 +291,6 @@ def calculate_metrics(predictions, labels, fs, result_dir):
 
     # generate BlandAltman Plot and line plot prediction vs ground truth
     # for FFT
-    print(len(gt_hr_fft_all))
-    print(len(predict_hr_fft_all))
     generate_plots(gt_hr_fft_all, predict_hr_fft_all, result_dir=result_dir, file_name=f"FFT_plots.png")
     # for Peak
     generate_plots(gt_hr_peak_all, predict_hr_peak_all, result_dir=result_dir, file_name=f"Peak_plots.png")

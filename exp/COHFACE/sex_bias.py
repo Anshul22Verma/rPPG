@@ -59,6 +59,7 @@ if __name__ == "__main__":
     general_generator.manual_seed(seed)
     
     model = TSCAN(in_channels=3, frame_depth=frame_depth, img_size=H).to(device)
+    model = load_model(model, model_dir=model_dir, model_file_name=f"{model_file_name}_Epoch8.pth")
 
 
     criterion = torch.nn.MSELoss()
@@ -106,9 +107,13 @@ if __name__ == "__main__":
     scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr, epochs=max_epochs, 
                                                     steps_per_epoch=num_train_batches)
     
-    mean_training_losses, mean_valid_losses, lrs = train(model, max_epochs, train_loader, 
+    mean_training_losses, mean_valid_losses, lrs, best_epoch = train(model, max_epochs, train_loader, 
                                                          val_loader, device, base_len, optimizer, 
                                                          criterion, scheduler, model_dir, model_file_name)
     
+    model = load_model(model, model_dir=model_dir, model_file_name=f"{model_file_name}_Epoch{best_epoch}.pth")
     # TESTING
+    val_dir = os.path.join(model_dir, "val")
+    os.makedirs(val_dir, exist_ok=True)
+    test(model, val_loader, device, base_len, val_dir, fs)    
     test(model, test_loader, device, base_len, model_dir, fs)
