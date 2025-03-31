@@ -50,8 +50,23 @@ def standardized_data(data):
     data[np.isnan(data)] = 0
     return data
 
+def standardized_label(label):
+    """Z-score standardization for label signal."""
+    label = label - np.mean(label)
+    label = label / np.std(label)
+    label[np.isnan(label)] = 0
+    return label
+
 
 def resample_ppg(input_signal, target_length):
+    """Samples a PPG sequence into specific length."""
+    return np.interp(
+        np.linspace(
+            1, input_signal.shape[0], target_length), np.linspace(
+            1, input_signal.shape[0], input_signal.shape[0]), input_signal)
+
+
+def resample_hr(input_signal, target_length):
     """Samples a PPG sequence into specific length."""
     return np.interp(
         np.linspace(

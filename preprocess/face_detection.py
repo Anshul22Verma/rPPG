@@ -17,7 +17,7 @@ def face_detection(frame, backend, use_larger_box=True, larger_box_coef=1.0):
     if backend == "HC":
         # Use OpenCV's Haar Cascade algorithm implementation for face detection
         # This should only utilize the CPU
-        detector = cv2.CascadeClassifier('/home/ubuntu/rPPG/rPPG_pipe/haarcascade_frontalface_default.xml')
+        detector = cv2.CascadeClassifier(r'C:\Users\transponster\Documents\anshul\rPPG\haarcascade_frontalface_default.xml')
 
         # Computed face_zone(s) are in the form [x_coord, y_coord, width, height]
         # (x,y) corresponds to the top-left corner of the zone to define using

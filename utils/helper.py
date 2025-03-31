@@ -1,7 +1,8 @@
 import cv2
 import h5py
 import numpy as np
-
+import pandas as pd
+from scipy.signal import welch
 
 def read_vid(video_path: str):
     """Read video from a file
@@ -30,3 +31,14 @@ def read_h5py_cohface_gt(h5py_path: str):
     pulse = h5py_file["pulse"][:]
     h5py_file.close()
     return pulse
+
+
+def read_csv_gt(csv_path: str):
+    df = pd.read_csv(csv_path)
+    return np.array(df["bpm"].values.tolist())
+
+
+# HR calculation based on ground truth label
+def get_hr(y, sr, min=30, max=180):
+    p, q = welch(y, sr, nfft=1e5 / sr, nperseg=np.min((len(y) - 1, 256)))
+    return p[(p > min / 60) & (p < max / 60)][np.argmax(q[(p > min / 60) & (p < max / 60)])] * 60

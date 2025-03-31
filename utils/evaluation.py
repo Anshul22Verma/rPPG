@@ -310,3 +310,78 @@ def calculate_metrics(predictions, labels, fs, result_dir):
     df_results = pd.DataFrame(results, index=[0])
     result_file = f'{result_dir}/metrics_results.csv'
     df_results.to_csv(result_file, index=False)
+
+
+def calculate_metrics_hr(predictions, labels, result_dir):
+    """Calculate Heart Rate (HR) Metrics (MAE, RMSE, MAPE, Pearson Coef.)."""
+    # Initialize lists to store HR predictions and ground truth
+    predict_hr_all = []
+    gt_hr_all = []
+
+    print("Calculating HR metrics!")
+
+    # Flatten predictions and labels (if they are in batch format)
+    predictions = [prediction.squeeze().tolist() for prediction in predictions]
+    labels = [label.tolist() for label in labels]
+
+    for index in tqdm(range(len(predictions)), ncols=80):
+        prediction = predictions[index]  # predicted HR
+        label = labels[index]  # ground truth HR
+
+        # Append to lists
+        gt_hr_all.append(label)
+        predict_hr_all.append(prediction)
+
+    # Convert lists to numpy arrays for further calculations
+    gt_hr_all = np.array(gt_hr_all)
+    predict_hr_all = np.array(predict_hr_all)
+
+    num_test_samples = len(predict_hr_all)
+
+    # Compute MAE (Mean Absolute Error)
+    MAE = np.mean(np.abs(predict_hr_all - gt_hr_all))
+    standard_error = np.std(np.abs(predict_hr_all - gt_hr_all)) / np.sqrt(num_test_samples)
+    print(f"MAE: {MAE} +/- {standard_error}")
+
+    # Compute RMSE (Root Mean Squared Error)
+    squared_errors = np.square(predict_hr_all - gt_hr_all)
+    RMSE = np.sqrt(np.mean(squared_errors))
+    standard_error = np.sqrt(np.std(squared_errors) / np.sqrt(num_test_samples))
+    print(f"RMSE: {RMSE} +/- {standard_error}")
+
+    # Compute MAPE (Mean Absolute Percentage Error)
+    MAPE = np.mean(np.abs((predict_hr_all - gt_hr_all) / gt_hr_all)) * 100
+    standard_error = np.std(np.abs((predict_hr_all - gt_hr_all) / gt_hr_all)) / np.sqrt(num_test_samples) * 100
+    print(f"MAPE: {MAPE} +/- {standard_error}")
+
+    # Compute Pearson Correlation
+    # Pearson = np.corrcoef(predict_hr_all, gt_hr_all)
+    # correlation_coefficient = Pearson[0][1]
+    # standard_error = np.sqrt((1 - correlation_coefficient ** 2) / (num_test_samples - 2))
+    # print(f"Pearson Correlation: {correlation_coefficient} +/- {standard_error}")
+
+    # Compute SNR (Signal-to-Noise Ratio)
+    # Assuming you might want to calculate SNR here, based on your method (e.g., using some noise model)
+    # If you're just calculating the difference between HR prediction and GT as the noise:
+    residual = np.abs(predict_hr_all - gt_hr_all)
+    signal = np.abs(gt_hr_all)
+    SNR = 10 * np.log10(np.mean(signal) / np.mean(residual))  # Simplified version of SNR calculation
+    standard_error = np.std(SNR) / np.sqrt(num_test_samples)
+    print(f"SNR: {SNR} +/- {standard_error} (dB)")
+
+    # Save metrics results to a CSV file
+    results = {
+        "MAE": MAE,
+        "RMSE": RMSE,
+        "MAPE": MAPE,
+        # "Pearson_Correlation": correlation_coefficient,
+        "SNR": SNR,
+    }
+
+    df_results = pd.DataFrame(results, index=[0])
+    result_file = f'{result_dir}/metrics_results.csv'
+    df_results.to_csv(result_file, index=False)
+
+    # You can also generate additional plots, such as Bland-Altman or HR vs Ground Truth plots here
+    generate_plots(gt_hr_all, predict_hr_all, result_dir=result_dir, file_name=f"HR_plots.png")
+

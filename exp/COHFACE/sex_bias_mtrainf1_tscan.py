@@ -10,9 +10,9 @@ import sys
 sys.path.append("/home/ubuntu/rPPG/rPPG_pipe")
 
 from model.ts_can import TSCAN
-from loader.base_loader import TSCanDataset
+from loader.cohface_loaders import TSCanDataset
 from utils.evaluation import calculate_metrics
-from exp.COHFACE.exp_01 import *
+from exp.COHFACE.exp_01_tscan import *
 
 # 6 has 0-7 sessions
 males_fold1 = ["1_0", "1_1", "1_2", "1_3", "3_0", "3_1", "3_2", "3_3", 
@@ -39,16 +39,12 @@ females = ["18_0", "18_1", "18_2", "18_3", "19_0", "19_1", "19_2", "19_3",
 
 if __name__ == "__main__":
     device = torch.device("cuda")
-    
     max_epochs = 20
-    
-    model_dir = "/home/ubuntu/rPPG/models/COHFACE/sex_bias_male_fold1"
+    model_dir = r"D:\anshul\remoteHR\models\COHFACE\ts_can_sex_bias_male_fold1"
     os.makedirs(model_dir, exist_ok=True)
     model_file_name = "COHFACE_exp"
     batch_size = 2
-    
     base_len, frame_depth, chunk_len = 10, 10, 200
-    
     lr = 1e-4
     H, W = 128, 128
     seed = 2025
@@ -57,63 +53,47 @@ if __name__ == "__main__":
     train_generator.manual_seed(seed)
     general_generator = torch.Generator()
     general_generator.manual_seed(seed)
-    
+
     model = TSCAN(in_channels=3, frame_depth=frame_depth, img_size=H).to(device)
-    model = load_model(model, model_dir=model_dir, model_file_name=f"{model_file_name}_Epoch8.pth")
-
-
+    # model = load_model(model, model_dir=model_dir, model_file_name=f"{model_file_name}_Epoch8.pth")
     criterion = torch.nn.MSELoss()
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0)
-
     train_dataset = TSCanDataset(patient_session_ids=males_fold1,
-                                 root_loc="/home/ubuntu/rPPG/data/cohface",
-                                 cache_dir="/home/ubuntu/rPPG/data/cache/cohface",
+                                 root_loc=r"D:\anshul\remoteHR\4081054\cohface",
+                                 cache_dir=r"D:\anshul\remoteHR\cache\COHFACE",
                                  width=W, height=H, chunk_length=chunk_len)
     val_dataset = TSCanDataset(patient_session_ids=males_fold2,
-                               root_loc="/home/ubuntu/rPPG/data/cohface",
-                               cache_dir="/home/ubuntu/rPPG/data/cache/cohface",
+                               root_loc=r"D:\anshul\remoteHR\4081054\cohface",
+                               cache_dir=r"D:\anshul\remoteHR\cache\COHFACE",
                                width=W, height=H, chunk_length=chunk_len)
     test_dataset = TSCanDataset(patient_session_ids=females,
-                                root_loc="/home/ubuntu/rPPG/data/cohface",
-                                cache_dir="/home/ubuntu/rPPG/data/cache/cohface",
+                                root_loc=r"D:\anshul\remoteHR\4081054\cohface",
+                                cache_dir=r"D:\anshul\remoteHR\cache\COHFACE",
                                 width=W, height=H, chunk_length=chunk_len)
-    train_loader = DataLoader(
-                dataset=train_dataset,
-                num_workers=1,
-                batch_size=batch_size,
-                shuffle=True,
-                worker_init_fn=seed_worker,
-                generator=train_generator
-            )
-    val_loader = DataLoader(
-                dataset=val_dataset,
-                num_workers=1,
-                batch_size=batch_size,
-                shuffle=True,
-                worker_init_fn=seed_worker,
-                generator=general_generator
-            )
-    test_loader = DataLoader(
-            dataset=test_dataset,
-            num_workers=1,
-            batch_size=batch_size,
-            shuffle=True,
-            worker_init_fn=seed_worker,
-            generator=general_generator
-        )
+    train_loader = DataLoader(dataset=train_dataset, num_workers=1,
+                              batch_size=batch_size, shuffle=True,
+                              worker_init_fn=seed_worker, generator=train_generator)
+    val_loader = DataLoader(dataset=val_dataset, num_workers=1,
+                            batch_size=batch_size, shuffle=True,
+                            worker_init_fn=seed_worker, generator=general_generator)
+    test_loader = DataLoader(dataset=test_dataset, num_workers=1,
+                             batch_size=batch_size, shuffle=True,
+                             worker_init_fn=seed_worker, generator=general_generator)
 
     num_train_batches = len(train_loader)
     # See more details on the OneCycleLR scheduler here: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr, epochs=max_epochs, 
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr, epochs=max_epochs,
                                                     steps_per_epoch=num_train_batches)
-    
-    mean_training_losses, mean_valid_losses, lrs, best_epoch = train(model, max_epochs, train_loader, 
-                                                         val_loader, device, base_len, optimizer, 
-                                                         criterion, scheduler, model_dir, model_file_name)
-    
+
+    model, mean_training_losses, mean_valid_losses, lrs, best_epoch = train(model, max_epochs, train_loader,
+                                                                            val_loader, device, base_len,
+                                                                            optimizer, criterion, scheduler,
+                                                                            model_dir, model_file_name)
     model = load_model(model, model_dir=model_dir, model_file_name=f"{model_file_name}_Epoch{best_epoch}.pth")
+
     # TESTING
     val_dir = os.path.join(model_dir, "val")
     os.makedirs(val_dir, exist_ok=True)
-    test(model, val_loader, device, base_len, val_dir, fs)    
+    test(model, val_loader, device, base_len, val_dir, fs)
+
     test(model, test_loader, device, base_len, model_dir, fs)
